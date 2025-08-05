@@ -25,6 +25,12 @@ struct Book {
     char author[100];
 };
 
+struct BorrowedBook {
+    char username[50];
+    int book_id;
+    char borrow_date[20];
+};
+
 // --- Utility ---
 void trim_newline(char *str) {
     size_t len = strlen(str);
@@ -126,13 +132,13 @@ void register_user() {
     printf("Registration successful!\n");
 }
 
-int login_user() {
-    char uname[50], pass[50];
+int login_user(char *username) {
+    char pass[50];
     struct User u;
     int found = 0;
     getchar();
     printf("\n--- USER LOGIN ---\n");
-    printf("Username: "); fgets(uname, 50, stdin); trim_newline(uname);
+    printf("Username: "); fgets(username, 50, stdin); trim_newline(username);
     printf("Password: ");
     get_password(pass);  // Hide password input with ***
     
@@ -143,7 +149,7 @@ int login_user() {
     }
     while (fscanf(fp, "%99[^,],%49[^,],%99[^,],%19[^,],%49[^\n]\n",
                   u.fullname, u.username, u.email, u.phone, u.password) == 5) {
-        if (strcmp(u.username, uname) == 0 && strcmp(u.password, pass) == 0) {
+        if (strcmp(u.username, username) == 0 && strcmp(u.password, pass) == 0) {
             found = 1;
             break;
         }
@@ -298,12 +304,72 @@ void delete_book() {
     }
 }
 
+// --- Borrow Book ---
+void borrow_book(const char *username) {
+    int id, found = 0;
+    struct BorrowedBook bb;
+    printf("\nEnter Book ID to borrow: ");
+    scanf("%d", &id);
+    
+    FILE *fp = fopen("books.txt", "r");
+    while (fscanf(fp, "%d,%99[^,],%99[^\n]\n", &book.id, book.title, book.author) == 3) {
+        if (book.id == id) {
+            found = 1;
+            break;
+        }
+    }
+    fclose(fp);
+
+    if (!found) {
+        printf("Book ID not found.\n");
+        return;
+    }
+
+    // Get the current date (for simplicity, using a placeholder)
+    strcpy(bb.borrow_date, "2023-10-01"); // Replace with actual date retrieval logic
+    strcpy(bb.username, username);
+    bb.book_id = id;
+
+    FILE *bf = fopen("borrowed_books.txt", "a");
+    if (!bf) {
+        printf("Error saving borrowed book!\n");
+        return;
+    }
+    fprintf(bf, "%s,%d,%s\n", bb.username, bb.book_id, bb.borrow_date);
+    fclose(bf);
+    printf("Book borrowed successfully!\n");
+}
+
+// --- View Borrow History ---
+void view_borrow_history(const char *username) {
+    FILE *fp = fopen("borrowed_books.txt", "r");
+    if (!fp) {
+        printf("No borrow history found.\n");
+        return;
+    }
+
+    printf("\n--- BORROW HISTORY ---\n");
+    printf("%-20s %-5s %-20s\n", "Username", "Book ID", "Borrow Date");
+    struct BorrowedBook bb;
+    int found = 0;
+    while (fscanf(fp, "%49[^,],%d,%19[^\n]\n", bb.username, &bb.book_id, bb.borrow_date) == 3) {
+        if (strcmp(bb.username, username) == 0) {
+            printf("%-20s %-5d %-20s\n", bb.username, bb.book_id, bb.borrow_date);
+            found = 1;
+        }
+    }
+    if (!found) {
+        printf("No borrow history found for user %s.\n", username);
+    }
+    fclose(fp);
+}
+
 // --- Admin Menu ---
 void admin_main_menu() {
     int choice;
     do {
         printf("\n--- ADMIN PANEL ---\n");
-        printf("1. Add Book\n2. View Books\n3. Search Book\n4. Edit Book\n5. Delete Book\n6. Logout\nEnter choice: ");
+        printf("1. Add Book\n2. View Books\n3. Search Book\n4. Edit Book\n5. Delete Book\n6. View Borrow History\n7. Logout\nEnter choice: ");
         scanf("%d", &choice);
         switch (choice) {
             case 1: add_book(); break;
@@ -311,10 +377,19 @@ void admin_main_menu() {
             case 3: search_book(); break;
             case 4: edit_book(); break;
             case 5: delete_book(); break;
-            case 6: printf("Logging out...\n"); break;
+            case 6: {
+                char username[50];
+                printf("Enter username to check borrow history: ");
+                getchar();
+                fgets(username, 50, stdin);
+                trim_newline(username);
+                view_borrow_history(username);
+                break;
+            }
+            case 7: printf("Logging out...\n"); break;
             default: printf("Invalid choice!\n");
         }
-    } while (choice != 6);
+    } while (choice != 7);
 }
 
 void admin_panel() {
@@ -335,6 +410,7 @@ void admin_panel() {
 
 int main() {
     int choice;
+    char username[50];
     while (1) {
         printf("\n=== LIBRARY MANAGEMENT SYSTEM ===\n");
         printf("1. Register\n2. Login\n3. Admin Panel\n4. Exit\nEnter choice: ");
@@ -343,8 +419,21 @@ int main() {
         switch (choice) {
             case 1: register_user(); break;
             case 2:
-                if (login_user()) {
+                if (login_user(username)) {
                     printf("You are logged in as a user. Limited access.\n");
+                    int user_choice;
+                    do {
+                        printf("\n1. View Books\n2. Search Book\n3. Borrow Book\n4. View Borrow History\n5. Logout\nEnter choice: ");
+                        scanf("%d", &user_choice);
+                        switch (user_choice) {
+                            case 1: view_books(); break;
+                            case 2: search_book(); break;
+                            case 3: borrow_book(username); break;
+                            case 4: view_borrow_history(username); break;
+                            case 5: printf("Logging out...\n"); break;
+                            default: printf("Invalid choice!\n");
+                        }
+                    } while (user_choice != 5);
                 }
                 break;
             case 3: admin_panel(); break;
@@ -354,6 +443,7 @@ int main() {
     }
     return 0;
 }
+
 
 
 
