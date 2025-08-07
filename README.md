@@ -1,12 +1,8 @@
-# Capstone-Project
-A library Management System by C langauage.
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <conio.h>  
+#include <conio.h>
 
 #define ADMIN_USERNAME "Admin01"
 #define ADMIN_PASSWORD "242"
@@ -31,7 +27,7 @@ struct BorrowedBook {
     char borrow_date[20];
 };
 
-// --- Utility ---
+// --- Utility Functions ---
 void trim_newline(char *str) {
     size_t len = strlen(str);
     if (len > 0 && str[len-1] == '\n') str[len-1] = '\0';
@@ -88,15 +84,15 @@ void get_password(char *password) {
     printf("\n");
 }
 
-// --- User ---
+// --- User Registration & Login ---
 void register_user() {
     struct User u;
     getchar();
     printf("\n--- USER REGISTRATION ---\n");
     printf("Full Name: "); fgets(u.fullname, 100, stdin); trim_newline(u.fullname);
 
-    printf("Username: "); 
-    fgets(u.username, 50, stdin); 
+    printf("Username: ");
+    fgets(u.username, 50, stdin);
     trim_newline(u.username);
     if (username_exists(u.username)) {
         printf("Username already exists!\n");
@@ -105,7 +101,7 @@ void register_user() {
 
     while (1) {
         printf("Email (lowercase only, must include '@'): ");
-        fgets(u.email, 100, stdin); 
+        fgets(u.email, 100, stdin);
         trim_newline(u.email);
         if (is_valid_email(u.email)) break;
         printf("Invalid email. Try again.\n");
@@ -140,8 +136,8 @@ int login_user(char *username) {
     printf("\n--- USER LOGIN ---\n");
     printf("Username: "); fgets(username, 50, stdin); trim_newline(username);
     printf("Password: ");
-    get_password(pass);  // Hide password input with ***
-    
+    get_password(pass);
+
     FILE *fp = fopen("users.txt", "r");
     if (!fp) {
         printf("No users registered!\n");
@@ -164,7 +160,7 @@ int login_user(char *username) {
     }
 }
 
-// --- Book ---
+// --- Book Management ---
 struct Book book;
 int generate_book_id() {
     FILE *fp = fopen("books.txt", "r");
@@ -250,7 +246,8 @@ void edit_book() {
         if (book.id == id) {
             getchar();
             printf("New Title: "); fgets(book.title, 100, stdin); trim_newline(book.title);
-            printf("New Author: "); fgets(book.author, 100, stdin); trim_newline(book.author);
+            printf("New Author: ");
+            fgets(book.author, 100, stdin); trim_newline(book.author);
             found = 1;
         }
         fprintf(temp, "%d,%s,%s\n", book.id, book.title, book.author);
@@ -310,7 +307,7 @@ void borrow_book(const char *username) {
     struct BorrowedBook bb;
     printf("\nEnter Book ID to borrow: ");
     scanf("%d", &id);
-    
+
     FILE *fp = fopen("books.txt", "r");
     while (fscanf(fp, "%d,%99[^,],%99[^\n]\n", &book.id, book.title, book.author) == 3) {
         if (book.id == id) {
@@ -325,8 +322,8 @@ void borrow_book(const char *username) {
         return;
     }
 
-    // Get the current date (for simplicity, using a placeholder)
-    strcpy(bb.borrow_date, "2023-10-01"); // Replace with actual date retrieval logic
+    // Get the current date (placeholder)
+    strcpy(bb.borrow_date, "2023-10-01");
     strcpy(bb.username, username);
     bb.book_id = id;
 
@@ -365,19 +362,92 @@ void view_borrow_history(const char *username) {
 }
 
 // --- Admin Menu ---
+void book_management_menu() {
+    int choice;
+    do {
+        printf("\n--- BOOK MANAGEMENT ---\n");
+        printf("1. View Books\n2. Add Book\n3. Delete Book\n4. Search Book\n5. Edit Book\n6. Back to Admin Panel\nEnter choice: ");
+        scanf("%d", &choice);
+        switch (choice) {
+            case 1: view_books(); break;
+            case 2: add_book(); break;
+            case 3: delete_book(); break;
+            case 4: search_book(); break;
+            case 5: edit_book(); break;
+            case 6: printf("Returning to Admin Panel...\n"); break;
+            default: printf("Invalid choice!\n");
+        }
+    } while (choice != 6);
+}
+
+void view_all_users() {
+    FILE *fp = fopen("users.txt", "r");
+    if (!fp) {
+        printf("No users registered!\n");
+        return;
+    }
+
+    printf("\n--- USER DETAILS ---\n");
+    printf("%-20s %-15s %-25s %-15s\n", "Full Name", "Username", "Email", "Phone");
+    
+    struct User u;
+    while (fscanf(fp, "%99[^,],%49[^,],%99[^,],%19[^,],%49[^\n]\n",
+                  u.fullname, u.username, u.email, u.phone, u.password) == 5) {
+        printf("%-20s %-15s %-25s %-15s\n", u.fullname, u.username, u.email, u.phone);
+    }
+    fclose(fp);
+}
+
+void delete_user() {
+    char username[50];
+    printf("\nEnter username to delete: ");
+    getchar();
+    fgets(username, 50, stdin);
+    trim_newline(username);
+
+    FILE *fp = fopen("users.txt", "r");
+    FILE *temp = fopen("temp_users.txt", "w");
+
+    if (!fp || !temp) {
+        printf("Error opening files.\n");
+        if (fp) fclose(fp);
+        if (temp) fclose(temp);
+        return;
+    }
+
+    struct User u;
+    int found = 0;
+    while (fscanf(fp, "%99[^,],%49[^,],%99[^,],%19[^,],%49[^\n]\n",
+                  u.fullname, u.username, u.email, u.phone, u.password) == 5) {
+        if (strcmp(u.username, username) == 0) {
+            found = 1;
+            continue;
+        }
+        fprintf(temp, "%s,%s,%s,%s,%s\n", u.fullname, u.username, u.email, u.phone, u.password);
+    }
+
+    fclose(fp);
+    fclose(temp);
+
+    if (!found) {
+        printf("Username not found.\n");
+        remove("temp_users.txt");
+    } else {
+        remove("users.txt");
+        rename("temp_users.txt", "users.txt");
+        printf("User deleted successfully.\n");
+    }
+}
+
 void admin_main_menu() {
     int choice;
     do {
-        printf("\n--- ADMIN PANEL ---\n");
-        printf("1. Add Book\n2. View Books\n3. Search Book\n4. Edit Book\n5. Delete Book\n6. View Borrow History\n7. Logout\nEnter choice: ");
+        printf("\n=== ADMIN PANEL ===\n");
+        printf("1. Book Management\n2. Borrow History\n3. User Details\n4. Delete User\n5. Logout\nEnter choice: ");
         scanf("%d", &choice);
         switch (choice) {
-            case 1: add_book(); break;
-            case 2: view_books(); break;
-            case 3: search_book(); break;
-            case 4: edit_book(); break;
-            case 5: delete_book(); break;
-            case 6: {
+            case 1: book_management_menu(); break;
+            case 2: {
                 char username[50];
                 printf("Enter username to check borrow history: ");
                 getchar();
@@ -386,10 +456,12 @@ void admin_main_menu() {
                 view_borrow_history(username);
                 break;
             }
-            case 7: printf("Logging out...\n"); break;
+            case 3: view_all_users(); break;
+            case 4: delete_user(); break;
+            case 5: printf("Logging out...\n"); break;
             default: printf("Invalid choice!\n");
         }
-    } while (choice != 7);
+    } while (choice != 5);
 }
 
 void admin_panel() {
@@ -398,8 +470,8 @@ void admin_panel() {
     printf("\n--- ADMIN LOGIN ---\n");
     printf("Admin Username: "); fgets(uname, 50, stdin); trim_newline(uname);
     printf("Admin Password: ");
-    get_password(pass);  // Password hidden with ***
-    
+    get_password(pass);
+
     if (strcmp(uname, ADMIN_USERNAME) == 0 && strcmp(pass, ADMIN_PASSWORD) == 0) {
         printf("Welcome Admin!\n");
         admin_main_menu();
@@ -408,6 +480,7 @@ void admin_panel() {
     }
 }
 
+// --- Main Function ---
 int main() {
     int choice;
     char username[50];
@@ -443,8 +516,3 @@ int main() {
     }
     return 0;
 }
-
-
-
-
-[by tasnim gazi]
